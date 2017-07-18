@@ -1,0 +1,21 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+    <item
+        android:id="@+id/karthik"
+        android:title="Karthik"/>
+
+    <item
+        android:id="@+id/bala"
+        android:title="Balakumar"/>
+
+    <item
+        android:id="@+id/sathesh"
+        android:title="Sathesh"/>
+
+    <item
+        android:id="@+id/rasik"
+        android:title="Rasik"/>
+
+    <item
+        android:id="@+id/vinod"
+        android:title="Vinod"/>
+</menu>
