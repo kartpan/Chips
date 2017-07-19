@@ -206,6 +206,23 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count,
                                           int after) {
+
+                String textValue = text.getText().toString();
+
+                if (count == 0 && after >= 1 && textValue.length() > 0) {
+                    int currPosition = checkMention(textValue, --start);
+                    if (currPosition != start) {
+                        for (Iterator<String> iter = mentions.listIterator(); iter.hasNext(); ) {
+                            String mention = iter.next();
+                            textValue = textValue.replace(mention, "<font color=blue>" + mention + "</font>");
+                        }
+                        currentlyEditing = true;
+                        text.setText(Html.fromHtml(textValue.trim()));
+                        text.setSelection(++currPosition);
+                        currentlyEditing = false;
+
+                    }
+                }
             }
 
             @Override
@@ -291,6 +308,47 @@ public class MainActivity extends AppCompatActivity {
             names.add("N.A.");
         }
         return names;
+    }
+
+    public int checkMention(String text, int currPosition) {
+
+        int tobePosition = currPosition;
+        int mentionStart = currPosition;
+        int mentionEnd = currPosition;
+        boolean rightHasBracket = false;
+        boolean leftHasBracket = false;
+
+        Log.w("Delete:", "Values: " + text + ":" + text.length() + ":" + text.charAt(currPosition));
+
+        while (mentionStart >= 0) {
+            if (text.charAt(mentionStart) == '[') {
+                rightHasBracket = true;
+                break;
+            } else if (text.charAt(mentionStart) == ']' && (mentionStart != currPosition)) {
+                rightHasBracket = false;
+                break;
+            }
+            mentionStart--;
+        }
+
+        while (mentionEnd < text.length()) {
+            if (text.charAt(mentionEnd) == ']') {
+                leftHasBracket = true;
+                break;
+            } else if (text.charAt(mentionEnd) == '[' && (mentionEnd != currPosition)) {
+                rightHasBracket = false;
+                break;
+            }
+            mentionEnd++;
+        }
+
+        if (leftHasBracket && rightHasBracket) {
+            tobePosition = mentionEnd;
+        } else {
+            tobePosition = currPosition;
+        }
+
+        return tobePosition;
     }
 
     public void createChip(String name) {
