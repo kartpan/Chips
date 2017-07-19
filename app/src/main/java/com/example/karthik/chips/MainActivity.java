@@ -36,6 +36,7 @@ public class MainActivity extends AppCompatActivity {
     protected TextView txtMentions;
     protected String textValue;
     protected String htmlValue;
+    protected boolean currentlyEditing;
 
 
     @Override
@@ -44,9 +45,9 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         chips = new ArrayList<Chip>();
         mentions = new ArrayList<String>();
-
         textValue = "";
         htmlValue = "";
+        currentlyEditing = false;
         ll = (LinearLayout)findViewById(R.id.layout);
         lp = new ActionBar.LayoutParams(ActionBar.LayoutParams.WRAP_CONTENT, ActionBar.LayoutParams.WRAP_CONTENT);
         txtMentions = (TextView)findViewById(R.id.mentions);
@@ -72,7 +73,7 @@ public class MainActivity extends AppCompatActivity {
 
                 List<String> names = tokenizer(currentText);
 
-                if (before >= 1) {
+                if (before >= 1 && (before != count)) {
 
                     if(!names.isEmpty()) {
                         for (Iterator<String> iter = mentions.listIterator(); iter.hasNext(); ) {
@@ -81,14 +82,19 @@ public class MainActivity extends AppCompatActivity {
                                 iter.remove();
                             }
                         }
+                    } else if (start >= 1 || (currentText.length() == 0 && !currentlyEditing)) {
+                        for (Iterator<String> iter = mentions.listIterator(); iter.hasNext(); ) {
+                            iter.next();
+                            iter.remove();
+                        }
                     }
-
-                    Log.w("Delete:", "Name:" + names);
 
                     for (Iterator<String> iter = names.listIterator(); iter.hasNext(); ) {
                         String mention = iter.next();
                         if (!mentions.contains(mention)) {
-                            finalString = finalString.replace(mention, "");
+                            if (!mention.equals("N.A.")) {
+                                finalString = finalString.replace(mention, "");
+                            }
                             intermediateDelete = true;
                         }
                     }
@@ -97,7 +103,6 @@ public class MainActivity extends AppCompatActivity {
                     while (iterator.hasNext()) {
                         Chip currChips = iterator.next();
 
-                        Log.w("Delete:", "Chips:" + currChips.getChipText());
 
                         if (!mentions.contains("[" + currChips.getChipText() + "]")) {
                             iterator.remove();
@@ -108,38 +113,44 @@ public class MainActivity extends AppCompatActivity {
                         txtMentions.setVisibility(View.GONE);
                     }
 
-                    if (intermediateDelete) {
+                    String difference = StringUtils.difference(value, textValue);
+                    position = StringUtils.indexOfDifference(value, textValue);
+                    initialPosition = position;
+
+                    if (intermediateDelete && difference.charAt(0) != ']') {
 
                         for (Iterator<String> iter = mentions.listIterator(); iter.hasNext(); ) {
                             String mention = iter.next();
                             finalString = finalString.replace(mention, "<font color=blue>" + mention + "</font>");
                         }
 
+                        currentlyEditing = true;
                         text.setText(Html.fromHtml(finalString.trim()));
                         int cursorPosition = text.length();
-                        text.setSelection(cursorPosition);
+                        Log.w("Delete:", "Positions:" + start + ":" + before + ":" + count + ":" + cursorPosition);
+                        int pos;
+                        if (start < cursorPosition) {
+                            pos = start;
+                        } else {
+                            pos = cursorPosition;
+                        }
+                        text.setSelection(pos);
+                        currentlyEditing = false;
 
-                    } else {
+                    } else if (difference.charAt(0) == ']') {
 
-                        String difference = StringUtils.difference(value, textValue);
-                        position = StringUtils.indexOfDifference(value, textValue);
-                        initialPosition = position;
-
-                        if (difference.charAt(0) == ']') {
-
-                            while (true) {
-                                if (s.charAt(--position) == '[') {
-                                    break;
-                                } else if (position == 0 || s.charAt(position) == ']') {
-                                    falseString = true;
-                                    break;
-                                }
-                                name = name + s.charAt(position);
+                        while (true) {
+                            if (s.charAt(--position) == '[') {
+                                break;
+                            } else if (position == 0 || s.charAt(position) == ']') {
+                                falseString = true;
+                                break;
                             }
+                            name = name + s.charAt(position);
+                        }
 
-                            if (falseString) {
-                                name = "";
-                            }
+                        if (falseString) {
+                            name = "";
                         }
 
                         finalString = currentText.substring(0, position) + currentText.substring(initialPosition, currentText.length());
@@ -153,9 +164,19 @@ public class MainActivity extends AppCompatActivity {
                                 finalString = finalString.replace(mention, "<font color=blue>" + mention + "</font>");
                             }
 
+                            currentlyEditing = true;
                             text.setText(Html.fromHtml(finalString.trim()));
                             int cursorPosition = text.length();
-                            text.setSelection(cursorPosition);
+                            int pos;
+                            if (start < cursorPosition) {
+                                pos = start;
+                            } else {
+                                pos = cursorPosition;
+                            }
+                            text.setSelection(pos);
+
+                            text.setSelection(pos);
+                            currentlyEditing = false;
 
                             if (!text.getText().toString().contains(nameBuilder.toString())) {
                                 Iterator<Chip> iter = chips.iterator();
@@ -205,14 +226,15 @@ public class MainActivity extends AppCompatActivity {
                             formattedText = txt.replace("@", "["+ item.toString() + "]");
                             mentions.add("[" + item.toString() + "]");
 
-                            text.setText("");
                             for (Iterator<String> iter = mentions.listIterator(); iter.hasNext(); ) {
                                 String name =  iter.next();
                                 formattedText = formattedText.replace(name, "<font color=blue>" + name + "</font>");
                             }
+
                             text.setText(Html.fromHtml(formattedText.trim()));
                             int position = text.length();
                             text.setSelection(position);
+                            currentlyEditing = false;
                             createChip(item.toString());
                             return true;
                         }
@@ -237,14 +259,26 @@ public class MainActivity extends AppCompatActivity {
 
         int count = 0;
         boolean nameDelimiter = false;
+        boolean entered = false;
 
         while (count < text.length()) {
-            if (text.charAt(count) == '[') {
+            if (text.charAt(count) == '[' && !nameDelimiter) {
                 nameDelimiter = true;
+                entered = true;
+            } else if (text.charAt(count) == '[' && nameDelimiter) {
+                nameDelimiter = true;
+                names.add("N.A.");
+                name = "";
+
             } else if (text.charAt(count) == ']') {
                 nameDelimiter = false;
-                name = name + "]";
-                names.add(name);
+                if (entered) {
+                    name = name + "]";
+                    names.add(name);
+                    entered = false;
+                } else {
+                    names.add("N.A.");
+                }
                 name = "";
             }
 
@@ -252,6 +286,9 @@ public class MainActivity extends AppCompatActivity {
                 name = name + text.charAt(count);
             }
             count++;
+        }
+        if (nameDelimiter) {
+            names.add("N.A.");
         }
         return names;
     }
@@ -296,6 +333,7 @@ public class MainActivity extends AppCompatActivity {
                         txt = txt.replace(name, "<font color=blue>" + name + "</font>");
                     }
 
+                    currentlyEditing = true;
                     text.setText(Html.fromHtml(txt.trim()));
                     int position = text.length();
 
@@ -315,6 +353,7 @@ public class MainActivity extends AppCompatActivity {
 
 
                     text.setSelection(position);
+                    currentlyEditing = false;
 
                 }
             });
