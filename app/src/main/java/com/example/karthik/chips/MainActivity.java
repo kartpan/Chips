@@ -26,64 +26,66 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
-    protected List<Chip> chips;
-    protected EditText text;
-    protected Context context;
-    protected List<String> mentions;
-    protected String formattedText;
-    protected LinearLayout ll;
-    protected ActionBar.LayoutParams lp;
-    protected TextView txtMentions;
-    protected String textValue;
-    protected String htmlValue;
-    protected boolean currentlyEditing;
+    // Public variables
+
+    protected List<Chip> cpChipsCollection;
+    protected EditText etInputText;
+    protected Context cxtContext;
+    protected List<String> strMentionsCollection;
+    protected String strFormattedInputText;
+    protected LinearLayout llLayoutSpec;
+    protected ActionBar.LayoutParams lpParams;
+    protected TextView tvMentions;
+    protected String strInputValue;
+    protected boolean bCurrentlyEditing;
+    private int mPreviousLength;
+    private boolean mBackSpace;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        chips = new ArrayList<Chip>();
-        mentions = new ArrayList<String>();
-        textValue = "";
-        htmlValue = "";
-        currentlyEditing = false;
-        ll = (LinearLayout)findViewById(R.id.layout);
-        lp = new ActionBar.LayoutParams(ActionBar.LayoutParams.WRAP_CONTENT, ActionBar.LayoutParams.WRAP_CONTENT);
-        txtMentions = (TextView)findViewById(R.id.mentions);
 
-        text = (EditText)findViewById(R.id.inputText);
-        context = this;
+        // Global variables initialization
+        cxtContext = this;
+        cpChipsCollection = new ArrayList<Chip>();
+        strMentionsCollection = new ArrayList<String>();
+        bCurrentlyEditing = false;
+        etInputText = (EditText) findViewById(R.id.inputText);
+        strInputValue = "";
 
-        text.addTextChangedListener(new TextWatcher() {
+        //Linear Layout for chips display about EditText input
+        llLayoutSpec = (LinearLayout) findViewById(R.id.layout);
+        lpParams = new ActionBar.LayoutParams(ActionBar.LayoutParams.WRAP_CONTENT, ActionBar.LayoutParams.WRAP_CONTENT);
 
+        tvMentions = (TextView) findViewById(R.id.mentions);
+        etInputText.addTextChangedListener(new TextWatcher() {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
 
-
-                String value = "" + s;
-                String name = "";
-                int initialPosition = 0;
-                int position = 0;
-                boolean intermediateDelete = false;
-                boolean falseString = false;
-                String currentText = text.getText().toString();
+                String strInput = s.toString();
+                String strName = "";
+                int intStartMentionPosition = 0;
+                int intEndMentionPosition = 0;
+                boolean bIntermediateDelete = false;
+                boolean bFalseString = false;
+                String currentText = etInputText.getText().toString();
                 String finalString=currentText;
 
                 List<String> names = tokenizer(currentText);
 
                 if (before >= 1 && (before != count)) {
-
                     if(!names.isEmpty()) {
-                        for (Iterator<String> iter = mentions.listIterator(); iter.hasNext(); ) {
+                        for (Iterator<String> iter = strMentionsCollection.listIterator(); iter.hasNext(); ) {
                             String mention = iter.next();
                             if (!names.contains(mention)) {
                                 iter.remove();
                             }
                         }
-                    } else if (start >= 1 || (currentText.length() == 0 && !currentlyEditing)) {
-                        for (Iterator<String> iter = mentions.listIterator(); iter.hasNext(); ) {
+                    } else if (start >= 1 || (currentText.length() == 0 && !bCurrentlyEditing)) {
+                        for (Iterator<String> iter = strMentionsCollection.listIterator(); iter.hasNext(); ) {
                             iter.next();
                             iter.remove();
                         }
@@ -91,95 +93,92 @@ public class MainActivity extends AppCompatActivity {
 
                     for (Iterator<String> iter = names.listIterator(); iter.hasNext(); ) {
                         String mention = iter.next();
-                        if (!mentions.contains(mention)) {
+                        if (!strMentionsCollection.contains(mention)) {
                             if (!mention.equals("N.A.")) {
                                 finalString = finalString.replace(mention, "");
                             }
-                            intermediateDelete = true;
+                            bIntermediateDelete = true;
                         }
                     }
 
-                    Iterator<Chip> iterator = chips.iterator();
+                    Iterator<Chip> iterator = cpChipsCollection.iterator();
                     while (iterator.hasNext()) {
                         Chip currChips = iterator.next();
 
 
-                        if (!mentions.contains("[" + currChips.getChipText() + "]")) {
+                        if (!strMentionsCollection.contains("[" + currChips.getChipText() + "]")) {
                             iterator.remove();
                             currChips.setVisibility(View.GONE);
                         }
                     }
-                    if (chips.isEmpty()) {
-                        txtMentions.setVisibility(View.GONE);
+                    if (cpChipsCollection.isEmpty()) {
+                        tvMentions.setVisibility(View.GONE);
                     }
 
-                    String difference = StringUtils.difference(value, textValue);
-                    position = StringUtils.indexOfDifference(value, textValue);
-                    initialPosition = position;
+                    String difference = StringUtils.difference(strInput, strInputValue);
+                    intStartMentionPosition = StringUtils.indexOfDifference(strInput, strInputValue);
+                    intEndMentionPosition = intStartMentionPosition;
 
-                    if (intermediateDelete && difference.charAt(0) != ']') {
-
-                        for (Iterator<String> iter = mentions.listIterator(); iter.hasNext(); ) {
+                    if (bIntermediateDelete && difference.charAt(0) != ']') {
+                        for (Iterator<String> iter = strMentionsCollection.listIterator(); iter.hasNext(); ) {
                             String mention = iter.next();
                             finalString = finalString.replace(mention, "<font color=blue>" + mention + "</font>");
                         }
 
-                        currentlyEditing = true;
-                        text.setText(Html.fromHtml(finalString.trim()));
-                        int cursorPosition = text.length();
-                        Log.w("Delete:", "Positions:" + start + ":" + before + ":" + count + ":" + cursorPosition);
+                        bCurrentlyEditing = true;
+                        etInputText.setText(Html.fromHtml(finalString.trim()));
+                        int cursorPosition = etInputText.length();
                         int pos;
                         if (start < cursorPosition) {
                             pos = start;
                         } else {
                             pos = cursorPosition;
                         }
-                        text.setSelection(pos);
-                        currentlyEditing = false;
+                        etInputText.setSelection(pos);
+                        bCurrentlyEditing = false;
 
                     } else if (difference.charAt(0) == ']') {
-
                         while (true) {
-                            if (s.charAt(--position) == '[') {
+                            if (s.charAt(--intStartMentionPosition) == '[') {
                                 break;
-                            } else if (position == 0 || s.charAt(position) == ']') {
-                                falseString = true;
+                            } else if (intStartMentionPosition == 0 || s.charAt(intStartMentionPosition) == ']') {
+                                bFalseString = true;
                                 break;
                             }
-                            name = name + s.charAt(position);
+                            strName = strName + s.charAt(intStartMentionPosition);
                         }
 
-                        if (falseString) {
-                            name = "";
+                        if (bFalseString) {
+                            strName = "";
                         }
 
-                        finalString = currentText.substring(0, position) + currentText.substring(initialPosition, currentText.length());
+                        finalString = currentText.substring(0, intStartMentionPosition) + currentText.substring(intEndMentionPosition, currentText.length());
 
-                        StringBuilder nameBuilder = new StringBuilder(name).reverse();
+                        StringBuilder nameBuilder = new StringBuilder(strName).reverse();
 
-                        if (!name.isEmpty()) {
+                        if (!strName.isEmpty()) {
 
-                            for (Iterator<String> iter = mentions.listIterator(); iter.hasNext(); ) {
+                            for (Iterator<String> iter = strMentionsCollection.listIterator(); iter.hasNext(); ) {
                                 String mention = iter.next();
                                 finalString = finalString.replace(mention, "<font color=blue>" + mention + "</font>");
                             }
 
-                            currentlyEditing = true;
-                            text.setText(Html.fromHtml(finalString.trim()));
-                            int cursorPosition = text.length();
+                            bCurrentlyEditing = true;
+                            etInputText.setText(Html.fromHtml(finalString.trim()));
+                            int cursorPosition = etInputText.length();
                             int pos;
                             if (start < cursorPosition) {
                                 pos = start;
                             } else {
                                 pos = cursorPosition;
                             }
-                            text.setSelection(pos);
+                            etInputText.setSelection(pos);
 
-                            text.setSelection(pos);
-                            currentlyEditing = false;
+                            etInputText.setSelection(pos);
+                            bCurrentlyEditing = false;
 
-                            if (!text.getText().toString().contains(nameBuilder.toString())) {
-                                Iterator<Chip> iter = chips.iterator();
+                            if (!etInputText.getText().toString().contains(nameBuilder.toString())) {
+                                Iterator<Chip> iter = cpChipsCollection.iterator();
                                 while (iter.hasNext()) {
                                     Chip currChips = iter.next();
 
@@ -188,8 +187,8 @@ public class MainActivity extends AppCompatActivity {
                                         currChips.setVisibility(View.GONE);
                                     }
                                 }
-                                if (chips.isEmpty()) {
-                                    txtMentions.setVisibility(View.GONE);
+                                if (cpChipsCollection.isEmpty()) {
+                                    tvMentions.setVisibility(View.GONE);
                                 }
 
                             }
@@ -199,7 +198,7 @@ public class MainActivity extends AppCompatActivity {
 
                 }
 
-                textValue = text.getText().toString();
+                strInputValue = etInputText.getText().toString();
             }
 
 
@@ -207,19 +206,21 @@ public class MainActivity extends AppCompatActivity {
             public void beforeTextChanged(CharSequence s, int start, int count,
                                           int after) {
 
-                String textValue = text.getText().toString();
+
+                mPreviousLength = s.length();
+                String textValue = etInputText.getText().toString();
 
                 if (count == 0 && after >= 1 && textValue.length() > 0) {
                     int currPosition = checkMention(textValue, --start);
                     if (currPosition != start) {
-                        for (Iterator<String> iter = mentions.listIterator(); iter.hasNext(); ) {
+                        for (Iterator<String> iter = strMentionsCollection.listIterator(); iter.hasNext(); ) {
                             String mention = iter.next();
                             textValue = textValue.replace(mention, "<font color=blue>" + mention + "</font>");
                         }
-                        currentlyEditing = true;
-                        text.setText(Html.fromHtml(textValue.trim()));
-                        text.setSelection(++currPosition);
-                        currentlyEditing = false;
+                        bCurrentlyEditing = true;
+                        etInputText.setText(Html.fromHtml(textValue.trim()));
+                        etInputText.setSelection(++currPosition);
+                        bCurrentlyEditing = false;
 
                     }
                 }
@@ -227,31 +228,39 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void afterTextChanged(Editable s) {
-                text.removeTextChangedListener(this);
-                String txt = text.getText().toString();
+                etInputText.removeTextChangedListener(this);
+
+                Log.w("Delete:", "Length:" + mPreviousLength + ":" + s.length());
+
+                mBackSpace = mPreviousLength >= s.length();
+
+                if ((!mBackSpace) && ((s.charAt(s.length() - 1) == '[') || (s.charAt(s.length() - 1) == ']'))) {
+                    s.replace(s.length() - 1, s.length(), "");
+                }
+
+                String txt = etInputText.getText().toString();
                 if (txt.contains("@")) {
 
-                    PopupMenu popup = new PopupMenu(context, text);
+                    PopupMenu popup = new PopupMenu(cxtContext, etInputText);
                     popup.getMenuInflater().inflate(R.menu.names, popup.getMenu());
                     popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
 
                         @Override
                         public boolean onMenuItemClick(MenuItem item) {
+                            
+                            String txt = etInputText.getText().toString();
+                            strFormattedInputText = txt.replace("@", "[" + item.toString() + "]");
+                            strMentionsCollection.add("[" + item.toString() + "]");
 
-
-                            String txt = text.getText().toString();
-                            formattedText = txt.replace("@", "["+ item.toString() + "]");
-                            mentions.add("[" + item.toString() + "]");
-
-                            for (Iterator<String> iter = mentions.listIterator(); iter.hasNext(); ) {
+                            for (Iterator<String> iter = strMentionsCollection.listIterator(); iter.hasNext(); ) {
                                 String name =  iter.next();
-                                formattedText = formattedText.replace(name, "<font color=blue>" + name + "</font>");
+                                strFormattedInputText = strFormattedInputText.replace(name, "<font color=blue>" + name + " </font>");
                             }
 
-                            text.setText(Html.fromHtml(formattedText.trim()));
-                            int position = text.length();
-                            text.setSelection(position);
-                            currentlyEditing = false;
+                            etInputText.setText(Html.fromHtml(strFormattedInputText.trim()));
+                            int position = etInputText.length();
+                            etInputText.setSelection(position);
+                            bCurrentlyEditing = false;
                             createChip(item.toString());
                             return true;
                         }
@@ -262,7 +271,7 @@ public class MainActivity extends AppCompatActivity {
 
                 }
 
-                text.addTextChangedListener(this);
+                etInputText.addTextChangedListener(this);
 
             }
         });
@@ -318,8 +327,6 @@ public class MainActivity extends AppCompatActivity {
         boolean rightHasBracket = false;
         boolean leftHasBracket = false;
 
-        Log.w("Delete:", "Values: " + text + ":" + text.length() + ":" + text.charAt(currPosition));
-
         while (mentionStart >= 0) {
             if (text.charAt(mentionStart) == '[') {
                 rightHasBracket = true;
@@ -353,8 +360,8 @@ public class MainActivity extends AppCompatActivity {
 
     public void createChip(String name) {
 
-        if (txtMentions.getVisibility() == View.GONE) {
-            txtMentions.setVisibility(View.VISIBLE);
+        if (tvMentions.getVisibility() == View.GONE) {
+            tvMentions.setVisibility(View.VISIBLE);
         }
 
 
@@ -365,13 +372,13 @@ public class MainActivity extends AppCompatActivity {
         chip.setHasIcon(true);
         chip.setClosable(true);
         chip.setPadding(10,0,10,0);
-        chips.add(chip);
+        cpChipsCollection.add(chip);
 
 
         boolean available = false;
         int count = 0;
 
-        for (final Chip allChips: chips) {
+        for (final Chip allChips : cpChipsCollection) {
 
             if(allChips.getChipText().equals(name)) {
                 count++;
@@ -382,20 +389,20 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onCloseClick(View v) {
                     allChips.setVisibility(View.GONE);
-                    String txt = text.getText().toString();
+                    String txt = etInputText.getText().toString();
 
                     txt = txt.replace("["+allChips.getChipText()+"]", "");
 
-                    for (Iterator<String> iter = mentions.listIterator(); iter.hasNext(); ) {
+                    for (Iterator<String> iter = strMentionsCollection.listIterator(); iter.hasNext(); ) {
                         String name =  iter.next();
                         txt = txt.replace(name, "<font color=blue>" + name + "</font>");
                     }
 
-                    currentlyEditing = true;
-                    text.setText(Html.fromHtml(txt.trim()));
-                    int position = text.length();
+                    bCurrentlyEditing = true;
+                    etInputText.setText(Html.fromHtml(txt.trim()));
+                    int position = etInputText.length();
 
-                    Iterator<Chip> iter = chips.iterator();
+                    Iterator<Chip> iter = cpChipsCollection.iterator();
 
                     while (iter.hasNext()) {
                         Chip currChips = iter.next();
@@ -405,13 +412,13 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
 
-                    if (chips.isEmpty()) {
-                        txtMentions.setVisibility(View.GONE);
+                    if (cpChipsCollection.isEmpty()) {
+                        tvMentions.setVisibility(View.GONE);
                     }
 
 
-                    text.setSelection(position);
-                    currentlyEditing = false;
+                    etInputText.setSelection(position);
+                    bCurrentlyEditing = false;
 
                 }
             });
@@ -419,7 +426,7 @@ public class MainActivity extends AppCompatActivity {
 
         if(!available || count == 1) {
             chip.setVisibility(View.VISIBLE);
-            ll.addView(chip, lp);
+            llLayoutSpec.addView(chip, lpParams);
         }
 
     }
