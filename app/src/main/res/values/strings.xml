@@ -1,4 +1,8 @@
 <resources>
     <string name="app_name">Chips</string>
     <string name="customTitle">Chips</string>
+    <string name="Type_A">remove_mention_not_in_name</string>
+    <string name="Type_B">remove_all_mention</string>
+    <string name="Type_C">remove_name_not_mention</string>
+    <string name="Type_D">format_input_text</string>
 </resources>
